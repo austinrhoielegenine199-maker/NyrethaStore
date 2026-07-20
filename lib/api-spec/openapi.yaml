@@ -1,22 +1,31 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: NyrethaStore API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: store
+    description: Store operations
+  - name: packages
+    description: Package operations
+  - name: cart
+    description: Cart operations
+  - name: payments
+    description: Payment operations
+  - name: server
+    description: Server status
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +33,204 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /store/info:
+    get:
+      operationId: getStoreInfo
+      tags: [store]
+      summary: Get store information and settings
+      responses:
+        "200":
+          description: Store info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreInfo"
+
+  /server/status:
+    get:
+      operationId: getServerStatus
+      tags: [server]
+      summary: Get Minecraft server status
+      responses:
+        "200":
+          description: Server status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerStatus"
+
+  /packages:
+    get:
+      operationId: listPackages
+      tags: [packages]
+      summary: List all store packages
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of packages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Package"
+
+  /packages/{id}:
+    get:
+      operationId: getPackage
+      tags: [packages]
+      summary: Get a single package
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Package details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Package"
+        "404":
+          description: Not found
+
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [packages]
+      summary: List all package categories
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+
+  /cart:
+    get:
+      operationId: getCart
+      tags: [cart]
+      summary: Get current cart
+      responses:
+        "200":
+          description: Cart contents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cart"
+    post:
+      operationId: addToCart
+      tags: [cart]
+      summary: Add a package to cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CartItemInput"
+      responses:
+        "200":
+          description: Updated cart
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cart"
+    delete:
+      operationId: clearCart
+      tags: [cart]
+      summary: Clear the entire cart
+      responses:
+        "200":
+          description: Cleared cart
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cart"
+
+  /cart/{packageId}:
+    delete:
+      operationId: removeFromCart
+      tags: [cart]
+      summary: Remove a package from cart
+      parameters:
+        - name: packageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated cart
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cart"
+
+  /payments/recent:
+    get:
+      operationId: getRecentPayments
+      tags: [payments]
+      summary: Get recent payments / top supporters
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Recent payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecentPayment"
+
+  /payments/top-donator:
+    get:
+      operationId: getTopDonator
+      tags: [payments]
+      summary: Get the all-time top donator
+      responses:
+        "200":
+          description: Top donator
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopDonator"
+
+  /giftcard/check:
+    post:
+      operationId: checkGiftcard
+      tags: [store]
+      summary: Check gift card balance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GiftcardCheckInput"
+      responses:
+        "200":
+          description: Gift card balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GiftcardBalance"
+        "404":
+          description: Gift card not found
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +238,167 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    StoreInfo:
+      type: object
+      properties:
+        storeName:
+          type: string
+        description:
+          type: string
+        serverIp:
+          type: string
+        discordUrl:
+          type: string
+        currency:
+          type: string
+        logoUrl:
+          type: ["string", "null"]
+      required: [storeName, description, serverIp, discordUrl, currency]
+
+    ServerStatus:
+      type: object
+      properties:
+        online:
+          type: boolean
+        playerCount:
+          type: integer
+        maxPlayers:
+          type: integer
+        version:
+          type: ["string", "null"]
+      required: [online, playerCount, maxPlayers]
+
+    Package:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        currency:
+          type: string
+        category:
+          type: string
+        categorySlug:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
+        featured:
+          type: boolean
+        salePricePercent:
+          type: ["integer", "null"]
+      required: [id, name, description, price, currency, category, categorySlug, featured]
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: ["string", "null"]
+        packageCount:
+          type: integer
+      required: [id, name, slug, packageCount]
+
+    CartItem:
+      type: object
+      properties:
+        packageId:
+          type: integer
+        packageName:
+          type: string
+        price:
+          type: number
+        currency:
+          type: string
+        quantity:
+          type: integer
+        imageUrl:
+          type: ["string", "null"]
+      required: [packageId, packageName, price, currency, quantity]
+
+    CartItemInput:
+      type: object
+      properties:
+        packageId:
+          type: integer
+        quantity:
+          type: integer
+      required: [packageId, quantity]
+
+    Cart:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CartItem"
+        total:
+          type: number
+        currency:
+          type: string
+        itemCount:
+          type: integer
+      required: [items, total, currency, itemCount]
+
+    RecentPayment:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        packageName:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        createdAt:
+          type: string
+        avatarUrl:
+          type: ["string", "null"]
+      required: [id, username, packageName, amount, currency, createdAt]
+
+    TopDonator:
+      type: object
+      properties:
+        username:
+          type: string
+        totalAmount:
+          type: number
+        currency:
+          type: string
+        avatarUrl:
+          type: ["string", "null"]
+      required: [username, totalAmount, currency]
+
+    GiftcardCheckInput:
+      type: object
+      properties:
+        code:
+          type: string
+      required: [code]
+
+    GiftcardBalance:
+      type: object
+      properties:
+        code:
+          type: string
+        balance:
+          type: number
+        currency:
+          type: string
+        valid:
+          type: boolean
+      required: [code, balance, currency, valid]
